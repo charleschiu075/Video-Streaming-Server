@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>HLS 播放器</title>
+</head>
+<body>
+  <h1>影片上傳與播放</h1>
+  <form id="uploadForm">
+    <input type="file" name="video" accept="video/*">
+    <button type="submit">上傳</button>
+  </form>
+  <hr>
+  <video id="videoPlayer" controls width="640"></video>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    const form = document.getElementById('uploadForm');
+    const video = document.getElementById('videoPlayer');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const res = await fetch('/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(data.streamPath);
+        hls.attachMedia(video);
+      } else {
+        video.src = data.streamPath;
+      }
+    });
+  </script>
+</body>
+</html>
