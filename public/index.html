@@ -7,11 +7,12 @@
 <body>
   <h1>影片上傳與播放</h1>
   <form id="uploadForm">
-    <input type="file" name="video" accept="video/*">
+    <input type="file" name="video" accept="video/*" required>
     <button type="submit">上傳</button>
   </form>
   <hr>
   <video id="videoPlayer" controls width="640"></video>
+
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
     const form = document.getElementById('uploadForm');
@@ -20,17 +21,39 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const formData = new FormData(form);
-      const res = await fetch('/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
-      if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(data.streamPath);
-        hls.attachMedia(video);
-      } else {
-        video.src = data.streamPath;
+      try {
+        const res = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!res.ok) {
+          const text = await res.text(); // 若不是 JSON 就讀文字
+          console.error('伺服器錯誤回應:', text);
+          alert('影片上傳失敗，請查看後端錯誤日誌。');
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!data.streamPath) {
+          console.error('伺服器未傳回 streamPath:', data);
+          alert('轉檔失敗或伺服器未正確回傳影片位址。');
+          return;
+        }
+
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hls.loadSource(data.streamPath);
+          hls.attachMedia(video);
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = data.streamPath;
+        } else {
+          alert('此瀏覽器不支援 HLS 播放');
+        }
+      } catch (err) {
+        console.error('發生錯誤:', err);
+        alert('上傳或播放過程發生錯誤，請查看開發者工具。');
       }
     });
   </script>
